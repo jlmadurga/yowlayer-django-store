@@ -15,7 +15,7 @@ before_install:
 install: pip install -r requirements-test.txt
 
 # command to run tests using coverage, e.g. python setup.py test
-script: coverage run --source yowlayer_store runtests.py
+script: travis
 
 after_success:
   - codecov

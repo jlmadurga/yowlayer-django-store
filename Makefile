@@ -53,3 +53,6 @@ release: clean
 sdist: clean
 	python setup.py sdist
 	ls -l dist
+	
+travis: lint
+	coverage run --source yowlayer_store runtests.py
