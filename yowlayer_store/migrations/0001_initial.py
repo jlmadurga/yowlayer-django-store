@@ -45,20 +45,9 @@ class Migration(migrations.Migration):
             name='MessageState',
             fields=[
                 ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('state', models.CharField(max_length=128, verbose_name='state', choices=[(b'received', 'Received'), (b'received_remote', 'Received remote'), (b'received_read', 'Received read'), (b'received_read', 'Received read remote'), (b'sent_queued', 'Send queued'), (b'sent', 'Sent'), (b'sent_delivered', 'Sent delivered'), (b'sent_read', 'Sent Read')])),
                 ('contact', models.ForeignKey(related_name='messages_states', to='yowlayer_store.Contact', null=True)),
                 ('message', models.ForeignKey(related_name='states', to='yowlayer_store.Message')),
             ],
-        ),
-        migrations.CreateModel(
-            name='State',
-            fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('name', models.CharField(unique=True, max_length=128, verbose_name='Name', choices=[(b'received', 'Received'), (b'received_remote', 'Received remote'), (b'received_read', 'Received read'), (b'received_read', 'Received read remote'), (b'sent_queued', 'Send queued'), (b'sent', 'Sent'), (b'sent_delivered', 'Sent delivered'), (b'sent_read', 'Sent Read')])),
-            ],
-        ),
-        migrations.AddField(
-            model_name='messagestate',
-            name='state',
-            field=models.ForeignKey(related_name='messages', to='yowlayer_store.State'),
         ),
     ]
