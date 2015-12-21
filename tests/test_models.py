@@ -187,7 +187,7 @@ class TestStorageLayer(TestCase):
         out_numbers = {}
         invalid_numbers = []
         result_sync = ResultSyncIqProtocolEntity(get_sync_protocol_entity.getId(), "1.2341", "0",
-        True, "12345", in_numbers, out_numbers, invalid_numbers)
+                                                 True, "12345", in_numbers, out_numbers, invalid_numbers)
         self.stack.receive(result_sync)
         self.assertEqualUpper(result_sync)
         for number, jid in in_numbers.items():
