@@ -9,7 +9,6 @@ yowlayer-django-store
     :target: https://travis-ci.org/jlmadurga/yowlayer-django-store
     
 .. image:: https://codecov.io/github/jlmadurga/yowlayer-django-store/coverage.svg?branch=master
-	:alt: Coverage
     :target: https://codecov.io/github/jlmadurga/yowlayer-django-store?branch=master
     
 .. image:: https://requires.io/github/jlmadurga/yowlayer-django-store/requirements.svg?branch=master
