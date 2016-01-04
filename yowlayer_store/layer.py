@@ -2,12 +2,13 @@ from yowsup.layers.interface import YowInterfaceLayer, ProtocolEntityCallback
 from yowsup.layers.protocol_messages.protocolentities import MessageProtocolEntity, TextMessageProtocolEntity
 from yowsup.layers.protocol_contacts.protocolentities import GetSyncIqProtocolEntity
 from yowsup.layers.protocol_receipts.protocolentities import OutgoingReceiptProtocolEntity
+from yowsup.layers.protocol_media.protocolentities import MediaMessageProtocolEntity
 from yowlayer_store.layer_interface import StorageLayerInterface
 import datetime
 import logging
 import time
 from django.core.exceptions import ObjectDoesNotExist
-from yowlayer_store.models import Message, MessageState, Contact, Conversation
+from yowlayer_store.models import Message, MessageState, Contact, Conversation, Media
 
 
 logger = logging.getLogger(__name__)
@@ -146,13 +147,57 @@ class YowStorageLayer(YowInterfaceLayer):
             conversation=conversation,
             t_sent=datetime.datetime.fromtimestamp(message_protocol_entity.getTimestamp())
         )
-        message.content = message_protocol_entity.getBody()
-
+        if message_protocol_entity.getType() == MessageProtocolEntity.MESSAGE_TYPE_MEDIA:
+            media = self.get_media(message_protocol_entity, message)
+            media.save()
+            message.media = media
+        else:
+            message.content = message_protocol_entity.getBody()
+        
         if type(message.content) is bytearray:
             message.content = message.content.decode('latin-1')
 
         message.save()
         return message
+    
+    def get_media(self, media_message_protocol_entity, message):
+        
+        media = Media(type=media_message_protocol_entity.getMediaType(),
+                      preview=media_message_protocol_entity.getPreview())
+        if media_message_protocol_entity.getMediaType() in (
+            MediaMessageProtocolEntity.MEDIA_TYPE_IMAGE,
+            MediaMessageProtocolEntity.MEDIA_TYPE_AUDIO,
+            MediaMessageProtocolEntity.MEDIA_TYPE_VIDEO
+        ):
+            self.set_downloadable_media_data(media_message_protocol_entity, media)
+            if media_message_protocol_entity.getMediaType() != MediaMessageProtocolEntity.MEDIA_TYPE_AUDIO:
+                message.content = media_message_protocol_entity.getCaption()
+
+        elif media_message_protocol_entity.getMediaType() == MediaMessageProtocolEntity.MEDIA_TYPE_LOCATION:
+            message.content = media_message_protocol_entity.getLocationName()
+            self.set_location_media_data(media_message_protocol_entity, media)
+        elif media_message_protocol_entity.getMediaType() == MediaMessageProtocolEntity.MEDIA_TYPE_VCARD:
+            message.content = media_message_protocol_entity.getName()
+            self.set_vcard_media_data(media_message_protocol_entity, media)
+
+        return media
+    
+    def set_location_media_data(self, location_media_message_protocol_entity, media):
+        media.remote_url = location_media_message_protocol_entity.getLocationURL()
+        media.data = ";".join((location_media_message_protocol_entity.getLatitude(),
+                               location_media_message_protocol_entity.getLongitude()))
+        media.encoding = location_media_message_protocol_entity.encoding
+
+    def set_vcard_media_data(self, vcard_media_message_protocol_entity, media):
+        media.data = vcard_media_message_protocol_entity.getCardData()
+
+    def set_downloadable_media_data(self, downloadable_media_message_protocol_entity, media):
+        media.size = downloadable_media_message_protocol_entity.getMediaSize()
+        media.remote_url = downloadable_media_message_protocol_entity.getMediaUrl()
+        media.mimetype = downloadable_media_message_protocol_entity.getMimeType()
+        media.filehash = downloadable_media_message_protocol_entity.fileHash
+        media.filename = downloadable_media_message_protocol_entity.fileName
+        media.encoding = downloadable_media_message_protocol_entity.encoding
 
     def store_contacts_sync_result(self, result_sync_iq_protocol_entity, original_get_sync_protocol_entity):
         for number, jid in result_sync_iq_protocol_entity.inNumbers.items():

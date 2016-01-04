@@ -20,7 +20,10 @@ from yowsup.layers.protocol_contacts.protocolentities import ResultSyncIqProtoco
 from yowsup.layers.auth.protocolentities import SuccessProtocolEntity
 import time
 import six
-from yowlayer_store.models.messages import MessageState
+from yowlayer_store.models.messages import MessageState, Message
+from tests.utils import image_downloadable_media_message_protocol_entity, \
+    video_downloadable_media_message_protocol_entity, location_media_message_protocol_entity, \
+    audio_downloadable_media_message_protocol_entity, vcard_media_message_protocol_entity
 
 
 class DummySenderLayer(YowLayer):
@@ -58,6 +61,13 @@ class TestStorageLayer(TestCase):
 
     def assertEqualLower(self, data):
         self.assertEqual(data, self.dummy_bottom_layer.lower_sink.pop())
+        
+    def assertDownloadableMedia(self, msg_entity, msg_stored):
+        self.assertEqual(msg_stored.media.encoding, msg_entity.encoding)
+        self.assertEqual(msg_stored.media.filehash, msg_entity.fileHash)
+        self.assertEqual(msg_stored.media.mimetype, msg_entity.mimeType)
+        self.assertEqual(msg_stored.media.filename, msg_entity.fileName)
+        self.assertEqual(msg_stored.media.remote_url, msg_entity.url)
 
     def send_message(self, content="Hello World"):
         msg_content = content
@@ -235,3 +245,33 @@ class TestStorageLayer(TestCase):
         self.assertEqual(MessageState.RECEIVED_REMOTE, self.get_message_state(message2.getId()))
         self.assertEqual([message1.getId(), message2.getId()],
                          self.dummy_bottom_layer.lower_sink.pop().getMessageIds())
+        
+    def _send_outgoing_media_message(self, message_entity):
+        self.stack.send(message_entity)
+        message_stored = Message.objects.get(id_gen=message_entity.getId())
+        return message_entity, message_stored
+    
+    def test_outgoing_image_message(self):
+        msg_entity, msg_stored = self._send_outgoing_media_message(image_downloadable_media_message_protocol_entity())
+        self.assertDownloadableMedia(msg_entity, msg_stored)
+        self.assertEqual(msg_stored.content, msg_entity.caption)       
+        
+    def test_outgoing_audio_message(self):
+        msg_entity, msg_stored = self._send_outgoing_media_message(audio_downloadable_media_message_protocol_entity())
+        self.assertDownloadableMedia(msg_entity, msg_stored)
+        
+    def test_outgoing_video_message(self):
+        msg_entity, msg_stored = self._send_outgoing_media_message(video_downloadable_media_message_protocol_entity())
+        self.assertEqual(msg_stored.content, msg_entity.caption)  
+        
+    def test_outgoing_vcard_message(self):
+        msg_entity, msg_stored = self._send_outgoing_media_message(vcard_media_message_protocol_entity())
+        self.assertEqual(msg_stored.content, msg_entity.name)
+        self.assertEqual(msg_stored.media.data, msg_entity.card_data)
+        
+    def test_outgoing_location_message(self):
+        msg_entity, msg_stored = self._send_outgoing_media_message(location_media_message_protocol_entity())
+        self.assertEqual(msg_stored.content, msg_entity.name)
+        self.assertEqual(msg_stored.media.data, ";".join((msg_entity.latitude, msg_entity.longitude)))
+        self.assertEqual(msg_stored.media.remote_url, msg_entity.url)
+        self.assertEqual(msg_stored.media.encoding, msg_entity.encoding)

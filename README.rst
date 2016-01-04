@@ -40,6 +40,7 @@ Features
 --------
 
 * Models for Text messages, convsersations and contact.
+* Media messages added
 
 Running Tests
 --------------

@@ -5,21 +5,61 @@ from django.core.exceptions import ObjectDoesNotExist
 from yowlayer_store.models.conversations import Conversation
 from yowlayer_store.models.contacts import Contact
 from yowsup.layers.protocol_messages.protocolentities.message import MessageProtocolEntity
+from yowsup.layers.protocol_media.protocolentities.message_media import MediaMessageProtocolEntity
 
+
+class Media(models.Model):
+    TYPE_IMAGE, TYPE_AUDIO, TYPE_VIDEO, TYPE_VCARD, TYPE_LOCATION = MediaMessageProtocolEntity.MEDIA_TYPE_IMAGE, \
+        MediaMessageProtocolEntity.MEDIA_TYPE_AUDIO, MediaMessageProtocolEntity.MEDIA_TYPE_VIDEO, \
+        MediaMessageProtocolEntity.MEDIA_TYPE_VCARD, MediaMessageProtocolEntity.MEDIA_TYPE_LOCATION
+    MEDIA_TYPES = (
+        (TYPE_IMAGE, _("Type Image")),
+        (TYPE_AUDIO, _("Type Audio")),
+        (TYPE_VIDEO, _("Type Video")),
+        (TYPE_VCARD, _("Type VCard")),
+        (TYPE_LOCATION, _("Type Location")),
+
+    )
+    type = models.CharField(_("Type"), choices=MEDIA_TYPES, max_length=128)
+    preview = models.BinaryField(_("Preview"), null=True)
+    transfer_status = models.IntegerField(_("Transfer Status"), default=0)
+    remote_url = models.URLField(_("Remote Url"), null=True)
+    size = models.IntegerField(_("Size"), null=True)
+    mimetype = models.CharField(_("Mime Type"), null=True, max_length=128)
+    filehash = models.CharField(_("File Hash"), max_length=128, unique=True)
+    filename = models.CharField(_("File Name"), null=True, max_length=128)
+    encoding = models.CharField(_("Encoding"), null=True, max_length=128)
+    data = models.TextField(_("Data"), unique=True)
+
+    def to_dict(self):
+        media = {
+            "type": self.type,
+            "preview": self.preview,
+            "remote_url": self.remote_url,
+            "data": self.data,
+            "transfer_status": self.transfer_status,
+            "size": self.size,
+            "mimetype": self.mimetype,
+            "filehash": self.filehash,
+            "filename": self.filename,
+            "encoding": self.encoding
+        }
+        return media
 
 class Message(models.Model):
     id_gen = models.CharField(null=False, unique=True, max_length=64)
-    conversation = models.ForeignKey(Conversation)
+    conversation = models.ForeignKey(Conversation, verbose_name=_("Conversation"))
     created = models.DateTimeField(_("Date created"), auto_now_add=True)
     t_sent = models.DateTimeField(_("Date sent"), auto_now=True)
     content = models.TextField(_("Content"), null=True)
+    media = models.ForeignKey(Media, null=True, verbose_name=_("Media"))
 
     def __unicode__(self):
         return self.id_gen
 
     def get_state(self):
         return MessageState.get_state(self)
-
+    
     @classmethod
     def get_by_state(cls, states, conversation=None):
         if conversation:
@@ -36,10 +76,9 @@ class Message(models.Model):
             "created": self.created,
             "content": self.content,
             "t_sent": self.t_sent,
-            # TODO:Add media field to Message
-            # if self.media is None else MessageProtocolEntity.MESSAGE_TYPE_MEDIA,
-            "type": MessageProtocolEntity.MESSAGE_TYPE_TEXT,
-            # "media": self.media.toDict() if self.media is not None else None,
+            "type": MessageProtocolEntity.MESSAGE_TYPE_TEXT if self.media is None else
+            MessageProtocolEntity.MESSAGE_TYPE_MEDIA,
+            "media": self.media.toDict() if self.media is not None else None,
             "state": self.get_state()
         }
 
